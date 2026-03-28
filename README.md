@@ -18,10 +18,8 @@ Play/pause, seek, speed — near-perfect sync with absolute state enforcement an
 - Minimal UI (clean popup: room status, participants, sync state)
 
 ## Demo
+https://github.com/user-attachments/assets/b2370619-cced-4740-ab26-df9cf7c17990
 
-[Watch quick demo →](https://www.youtube.com/watch?v=example-sync-demo)
-
-<!-- Replace with real link or embed GitHub-hosted MP4/GIF when ready -->
 
 ## Quick Setup
 
