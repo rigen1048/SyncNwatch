@@ -1,4 +1,3 @@
-// ping.ts
 import { sendPacket } from "./translator"; // adjust path
 
 const PING_INTERVAL_MS = 20_000; // 20 seconds
@@ -8,6 +7,7 @@ const PING_VALUE = 0;
 let pingInterval: ReturnType<typeof setInterval> | null = null;
 let lastPingTime = 0;
 let onPongCallback: ((latencyMs: number) => void) | null = null;
+let currentPing: number = 0;
 
 /** Start the ping heartbeat */
 export function startPing(onPong?: (latencyMs: number) => void) {
@@ -21,6 +21,10 @@ export function startPing(onPong?: (latencyMs: number) => void) {
 
   sendPing(); // immediate ping
   pingInterval = setInterval(sendPing, PING_INTERVAL_MS);
+}
+
+export function getPing() {
+  return currentPing;
 }
 
 /** Stop the ping heartbeat */
@@ -48,8 +52,14 @@ export function onValueReceived(value: number | string) {
   if (typeof value === "number" && value === PING_VALUE) {
     const latency = Math.round(performance.now() - lastPingTime);
 
+    currentPing = latency;
     console.log(`[ping] ← Pong received! Latency: ${latency}ms`);
     onPongCallback?.(latency);
+
+    // Notify popup immediately
+    chrome.runtime.sendMessage({ type: "pingUpdate", ping: latency }).catch(() => {
+      // Ignore errors if popup is closed
+    });
   }
 }
 

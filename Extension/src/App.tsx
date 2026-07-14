@@ -7,10 +7,12 @@ function App() {
   const { uniqueId, handleChangeId } = useUniqueId();
   const {
     isActive,
+    isLocked,
     buttonText,
     statusText,
     circleColor,
     isButtonDisabled,
+    ping,
     handleToggle,
   } = useActivation();
 
@@ -121,16 +123,37 @@ function App() {
         {/* Status Indicator */}
         <div
           style={{
-            fontSize: "13px",
-            color: "#ffffff",
-            fontWeight: "bold",
+            width: "100%",
             display: "flex",
+            flexDirection: "column",
             alignItems: "center",
-            gap: "8px",
+            gap: "4px",
           }}
         >
-          <div style={circleStyle} />
-          {statusText}
+          <div
+            style={{
+              fontSize: "13px",
+              color: "#ffffff",
+              fontWeight: "bold",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <div style={circleStyle} />
+            {statusText}
+          </div>
+          {(isActive || isLocked) && ping > 0 && (
+            <div
+              style={{
+                fontSize: "10px",
+                color: "#64748b",
+                fontFamily: "monospace",
+              }}
+            >
+              PING: {ping}ms
+            </div>
+          )}
         </div>
 
         {/* Bottom Controls */}

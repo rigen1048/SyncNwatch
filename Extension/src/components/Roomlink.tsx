@@ -1,7 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function RoomLink() {
   const [roomLink, setRoomLink] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentUrl, setCurrentUrl] = useState("");
+
+  useEffect(() => {
+    const fetchUrl = async () => {
+      const response = await chrome.runtime.sendMessage({ type: "getUrl" });
+      if (response?.url) {
+        setCurrentUrl(response.url);
+        setRoomLink(response.url);
+      }
+    };
+    fetchUrl();
+  }, []);
 
   const handleSendLink = () => {
     const link = roomLink.trim();
@@ -9,74 +22,135 @@ export default function RoomLink() {
 
     console.log("Room link submitted:", link);
 
-    // Send the URL to the background script without any validation or feedback
     chrome.runtime.sendMessage({
-      type: "ChangeUrl", // Ensure this matches your background script
+      type: "ChangeUrl",
       url: link,
     });
 
-    // Clear the input immediately after sending
-    setRoomLink("");
+    setCurrentUrl(link);
+    setIsEditing(false);
   };
 
   return (
     <div
       style={{
         display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
+        flexDirection: "column",
+        gap: "8px",
       }}
     >
-      <span style={{ letterSpacing: "0.8px" }}>ROOM LINK</span>
       <div
         style={{
           display: "flex",
+          justifyContent: "space-between",
           alignItems: "center",
-          gap: "6px",
-          maxWidth: "158px",
         }}
       >
-        <input
-          type="text"
-          placeholder="Paste link"
-          value={roomLink}
-          onChange={(e) => setRoomLink(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSendLink()}
+        <span style={{ letterSpacing: "0.8px" }}>SYNC LINK</span>
+        <div
           style={{
-            width: "100%",
-            maxWidth: "132px",
-            padding: "6px 8px",
-            background: "#1e293b",
-            border: "1px solid #475569",
-            borderRadius: "5px",
-            color: "#e2e8f0",
-            fontSize: "11px",
-            outline: "none",
-            boxSizing: "border-box",
-          }}
-        />
-        <button
-          onClick={handleSendLink}
-          disabled={!roomLink.trim()}
-          style={{
-            width: "26px",
-            height: "26px",
-            background: roomLink.trim() ? "#22d3ee" : "#334155",
-            border: "none",
-            borderRadius: "5px",
-            color: "#ffffff",
-            fontSize: "14px",
-            cursor: roomLink.trim() ? "pointer" : "default",
-            opacity: roomLink.trim() ? 1 : 0.5,
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-            transition: "background 0.3s",
+            gap: "8px",
           }}
         >
-          ✓
-        </button>
+          {!isEditing ? (
+            <>
+              <span
+                style={{
+                  fontSize: "11px",
+                  color: "#e2e8f0",
+                  maxWidth: "120px",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {currentUrl || "ws://..."}
+              </span>
+              <button
+                onClick={() => setIsEditing(true)}
+                style={{
+                  padding: "4px 8px",
+                  background: "transparent",
+                  border: "1px solid #475569",
+                  borderRadius: "5px",
+                  color: "#64748b",
+                  fontSize: "10px",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = "#334155";
+                  e.currentTarget.style.color = "#e2e8f0";
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = "#64748b";
+                }}
+              >
+                Edit
+              </button>
+            </>
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <input
+                type="text"
+                placeholder="ws://..."
+                value={roomLink}
+                onChange={(e) => setRoomLink(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSendLink()}
+                autoFocus
+                style={{
+                  width: "120px",
+                  padding: "4px 8px",
+                  background: "#1e293b",
+                  border: "1px solid #22d3ee",
+                  borderRadius: "5px",
+                  color: "#e2e8f0",
+                  fontSize: "11px",
+                  outline: "none",
+                }}
+              />
+              <button
+                onClick={handleSendLink}
+                style={{
+                  background: "#22d3ee",
+                  border: "none",
+                  borderRadius: "5px",
+                  color: "#0f172a",
+                  padding: "4px 8px",
+                  fontSize: "10px",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                }}
+              >
+                Save
+              </button>
+              <button
+                onClick={() => {
+                  setIsEditing(false);
+                  setRoomLink(currentUrl);
+                }}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#64748b",
+                  fontSize: "10px",
+                  cursor: "pointer",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

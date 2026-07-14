@@ -1,4 +1,3 @@
-// src/hooks/useActivation.ts
 import { useState, useEffect } from "react";
 import {
   onConnectionStatusChange,
@@ -12,6 +11,7 @@ export function useActivation() {
   const [isLocked, setIsLocked] = useState(false);
   const [connectionStatus, setConnectionStatus] =
     useState<ConnectionStatus>("searching");
+  const [ping, setPing] = useState<number>(0);
 
   // Real-time updates via events
   useEffect(() => {
@@ -20,6 +20,42 @@ export function useActivation() {
     });
     return unsubscribe;
   }, []);
+
+  // Listen for immediate ping updates and poll as fallback
+  useEffect(() => {
+    if (!isActive && !isLocked) {
+      setPing(0);
+      return;
+    }
+
+    const fetchPing = async () => {
+      try {
+        const response = await chrome.runtime.sendMessage({ type: "getPing" });
+        if (response && typeof response.ping === "number") {
+          setPing(response.ping);
+        }
+      } catch (err) {
+        // Background might be restarting
+      }
+    };
+
+    const handleMessage = (message: any) => {
+      if (message.type === "pingUpdate" && typeof message.ping === "number") {
+        setPing(message.ping);
+      }
+    };
+
+    chrome.runtime.onMessage.addListener(handleMessage);
+    fetchPing(); // Initial fetch
+
+    // Fallback polling every 5s just in case message is missed
+    const interval = setInterval(fetchPing, 5000);
+
+    return () => {
+      chrome.runtime.onMessage.removeListener(handleMessage);
+      clearInterval(interval);
+    };
+  }, [isActive, isLocked]);
 
   // Gentle polling when not clearly connected
   useEffect(() => {
@@ -108,7 +144,7 @@ export function useActivation() {
       return;
     }
 
-    if (isActive) {
+    if (isActive || isLocked) {
       // === DEACTIVATE ===
       try {
         await chrome.runtime.sendMessage({ type: "stopActivation" });
@@ -152,8 +188,8 @@ export function useActivation() {
   };
 
   // UI derivations
-  const buttonText = isActive ? "Deactivate" : "Activate";
-  const isButtonDisabled = connectionStatus !== "connected" || isLocked;
+  const buttonText = isActive || isLocked ? "Deactivate" : "Activate";
+  const isButtonDisabled = connectionStatus !== "connected" && !isLocked;
 
   const statusText = isActive
     ? "Active (this tab)"
@@ -175,6 +211,7 @@ export function useActivation() {
   return {
     isActive,
     isLocked,
+    ping,
     buttonText,
     statusText,
     circleColor,

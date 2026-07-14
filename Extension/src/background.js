@@ -1,55 +1,125 @@
-import { open, close, setWebSocketUrl } from "./components/websocket";
+import { open, close, setWebSocketUrl, getWebSocketUrl } from "./components/websocket";
 import { start, stop } from "./Data/observationFilter";
 import { enable, disable } from "./Data/listen";
-import { startPing, stopPing } from "./Data/ping";
+import { startPing, stopPing, getPing } from "./Data/ping";
 
+let checkInterval = null;
+
+
+//Starts all synchronization services.
 function yes() {
   open();
   start();
   enable();
   startPing();
 }
+
+// Stops all synchronization services and clears the periodic check.
 function no() {
+  stopPeriodicCheck();
   stopPing();
   disable();
   stop();
   close();
 }
 
+/**
+ * Periodically verifies if the stored active tab still exists.
+ * If the tab is gone, it automatically clears the activation state.
+ * This runs ONLY when a tab is activated.
+ */
+function startPeriodicCheck() {
+  if (checkInterval) return;
+
+  console.log("[background] Starting periodic tab check");
+  checkInterval = setInterval(async () => {
+    try {
+      const result = await chrome.storage.session.get("1");
+      const storedTabId = result["1"];
+
+      if (!storedTabId) {
+        stopPeriodicCheck();
+        return;
+      }
+
+      try {
+        // Verify if the tab still exists
+        await chrome.tabs.get(storedTabId);
+      } catch (e) {
+        // Tab no longer exists (e.g., closed, crashed)
+        console.log(`[background] Tab ${storedTabId} no longer exists. Clearing activation.`);
+        await chrome.storage.session.remove("1");
+        no();
+      }
+    } catch (err) {
+      console.error("[background] Error in periodic check:", err);
+    }
+  }, 5000); // Check every 5 seconds
+}
+
+
+function stopPeriodicCheck() {
+  if (checkInterval) {
+    clearInterval(checkInterval);
+    checkInterval = null;
+    console.log("[background] Periodic tab check stopped");
+  }
+}
+
+// Listener for tab closure to ensure we clear activation if the synced tab is closed
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+  try {
+    const result = await chrome.storage.session.get("1");
+    const storedTabId = result["1"];
+    if (storedTabId === tabId) {
+      console.log("[background] Synced tab closed, stopping activation");
+      await chrome.storage.session.remove("1");
+      no();
+    }
+  } catch (err) {
+    console.error("[background] Error in onRemoved listener:", err);
+  }
+});
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  // === Legacy: DO NOT REMOVE (moved to the very beginning as requested) ===
+  // === Legacy: Get Tab ID ===
   if (message.type === "getTabId" && sender.tab) {
     sendResponse({ tabId: sender.tab.id });
-    return false; // sync response
+    return false;
   }
 
   // === Check stored activation ===
   if (message.type === "checkActivation") {
     (async () => {
       try {
-        // Get the currently active tab in the current window (same logic as popup)
         const [currentTab] = await chrome.tabs.query({
           active: true,
           currentWindow: true,
         });
 
         const currentTabId = currentTab?.id ?? null;
-
-        if (currentTabId === null) {
-          sendResponse({
-            storedTabId: null,
-            isCurrentTabActive: false,
-          });
-          return;
-        }
-
-        // Retrieve stored active tab ID
         const result = await chrome.storage.session.get("1");
         const storedTabId = result["1"] ?? null;
 
+        // If a tab is stored but doesn't exist anymore, clear it immediately
+        if (storedTabId !== null) {
+          try {
+            await chrome.tabs.get(storedTabId);
+          } catch (e) {
+            console.log("[background] checkActivation: Stored tab missing, clearing.");
+            await chrome.storage.session.remove("1");
+            no();
+            sendResponse({
+              storedTabId: null,
+              isCurrentTabActive: false,
+            });
+            return;
+          }
+        }
+
         sendResponse({
           storedTabId,
-          isCurrentTabActive: storedTabId === currentTabId,
+          isCurrentTabActive: currentTabId !== null && storedTabId === currentTabId,
         });
       } catch (err) {
         console.error("[background] Error in checkActivation:", err);
@@ -59,8 +129,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         });
       }
     })();
-
-    return true; // indicates async response
+    return true; // async response
   }
 
   // === Start activation ===
@@ -69,13 +138,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       try {
         await chrome.storage.session.set({ 1: message.tabId });
         yes();
+        startPeriodicCheck(); // Start checking now that we have an active tab
         console.log("[background] Activation started for tab:", message.tabId);
       } catch (err) {
         console.error("[background] Failed to start activation:", err);
       }
     })();
-
-    return false; // fire-and-forget, no response needed
+    return false;
   }
 
   // === Stop activation ===
@@ -83,18 +152,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     (async () => {
       try {
         await chrome.storage.session.remove("1");
-        no();
-        console.log("[background] Activation stopped");
+        no(); // This also stops the periodic check
+        console.log("[background] Activation stopped manually");
       } catch (err) {
         console.error("[background] Failed to stop activation:", err);
       }
     })();
-
-    return false; // fire-and-forget
+    return false;
   }
+
+  // === Change WebSocket URL ===
   if (message.type === "ChangeUrl") {
     if (typeof message.url !== "string" || message.url.trim() === "") {
-      console.warn("[background] Invalid or missing URL in ChaneUrl message");
       sendResponse({ success: false, error: "Invalid URL" });
       return false;
     }
@@ -102,28 +171,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const newUrl = message.url.trim();
     setWebSocketUrl(newUrl);
 
-    // Auto-reconnect if currently activated
     (async () => {
       try {
         const result = await chrome.storage.session.get("1");
         if (result["1"] != null) {
           no();
-          yes(); // Will use the new URL
-          console.log(
-            "[background] WebSocket reconnected with new URL:",
-            newUrl,
-          );
-        } else {
-          console.log(
-            "[background] WebSocket URL updated (pending activation):",
-            newUrl,
-          );
+          yes();
+          startPeriodicCheck();
+          console.log("[background] WebSocket reconnected with new URL:", newUrl);
         }
       } catch (err) {
-        console.error(
-          "[background] Error checking activation during URL change:",
-          err,
-        );
+        console.error("[background] Error checking activation during URL change:", err);
       }
     })();
 
@@ -131,6 +189,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
 
-  // Default: no async response
+  if (message.type === "getUrl") {
+    sendResponse({ url: getWebSocketUrl() });
+    return false;
+  }
+
+  if (message.type === "getPing") {
+    sendResponse({ ping: getPing() });
+    return false;
+  }
+
   return false;
+});
+
+chrome.storage.session.get("1").then(result => {
+  if (result["1"]) {
+    startPeriodicCheck();
+  }
 });

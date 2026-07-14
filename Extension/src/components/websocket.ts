@@ -96,6 +96,10 @@ class WebSocketManager {
     this.wsUrl = url;
     console.log("[WS] URL set to:", this.wsUrl);
   }
+
+  public getUrl() {
+    return this.wsUrl;
+  }
 }
 
 // Singleton instance
@@ -110,4 +114,8 @@ export const receiveBinary = (callback: (data: Uint8Array) => void) =>
 
 export const setWebSocketUrl = (url: string) => {
   manager.setUrl(url);
+};
+
+export const getWebSocketUrl = () => {
+  return manager.getUrl();
 };

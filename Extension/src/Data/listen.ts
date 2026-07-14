@@ -1,33 +1,47 @@
-// src/Data/listen.ts
-
 import { PacketType, CommandSubEnums, Pcmd, Ucmd } from "./type";
 import { receiveBinary } from "../components/websocket";
 import { onValueReceived } from "./ping";
 
-/**
- * Sends a control command to the content script in the CURRENT ACTIVE TAB.
- * Uses chrome.tabs.sendMessage for reliable delivery (unlike runtime.sendMessage).
- */
+//Sends a control command to the content script in the CURRENT ACTIVE TAB.
+//Uses chrome.tabs.sendMessage for reliable delivery (unlike runtime.sendMessage).
+
 async function sendControlMessage(message: any) {
   try {
-    // Get the active tab in the current window
-    const tabs = await chrome.tabs.query({
-      active: true,
-      currentWindow: true,
-    });
+    // Retrieve stored active tab ID from session storage
+    const result = await chrome.storage.session.get("1");
+    const storedTabId = result["1"] as number | undefined;
 
-    const tab = tabs[0];
-    if (!tab?.id) {
-      console.log(
-        "[listen] No active tab found – cannot send control message:",
-        message,
-      );
+    if (storedTabId === undefined || storedTabId === null) {
+      console.log("[listen] No stored tab ID found – ignoring sync event.");
       return;
     }
 
+    // Check if the stored tab is still active and visible
+    const tab = await chrome.tabs.get(storedTabId);
+
+    if (!tab) {
+      console.log(`[listen] Tab ${storedTabId} not found.`);
+      return;
+    }
+
+    // If the tab is not active in its window, ignore
+    if (!tab.active) {
+      console.log(`[listen] Tab ${storedTabId} is not active – ignoring sync event.`);
+      return;
+    }
+
+    // The window focused: Future Feature Maybe???
+    // if (tab.windowId !== undefined) {
+    //   const window = await chrome.windows.get(tab.windowId);
+    //   if (!window.focused) {
+    //     console.log(`[listen] Window ${tab.windowId} is not focused – ignoring sync event.`);
+    //     return;
+    //   }
+    // }
+
     // Send directly to the content script in that tab
-    await chrome.tabs.sendMessage(tab.id, message);
-    console.log(`[listen] Sent to tab ${tab.id}:`, message);
+    await chrome.tabs.sendMessage(storedTabId, message);
+    console.log(`[listen] Sent to tab ${storedTabId}:`, message);
   } catch (error: any) {
     // Expected when no content script is injected (e.g., not on a video page)
     if (
@@ -45,9 +59,7 @@ async function sendControlMessage(message: any) {
   }
 }
 
-/**
- * Handles incoming binary packets from the WebSocket.
- */
+
 function handleBinaryPacket(data: Uint8Array | ArrayBuffer) {
   const packet = data instanceof Uint8Array ? data : new Uint8Array(data);
   if (packet.byteLength < 2) {
@@ -109,7 +121,7 @@ function handleBinaryPacket(data: Uint8Array | ArrayBuffer) {
         }
         break;
 
-      case "c": // server command (usually ignored)
+      case "c": // server command (usually ignored), Future Feature
         console.log("[listen] Received server command (ignored):", subByte);
         break;
     }
@@ -166,10 +178,7 @@ function handleBinaryPacket(data: Uint8Array | ArrayBuffer) {
   }
 }
 
-/**
- * Optional: Allow content scripts or popup to query the current tab ID
- * (useful for debugging or advanced features)
- */
+//Optional: Allow content scripts or popup to query the current tab ID
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "getTabId" && sender.tab) {
     sendResponse({ tabId: sender.tab.id });
