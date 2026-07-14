@@ -29,7 +29,7 @@ Python 3 • Node.js • Bun • Cloudflare account
 **Extension**
 
 ```bash
-git clone https://github.com/yourusername/syncnwatch
+git clone https://github.com/rigen1048/syncnwatch
 cd Extension
 bun install
 bun run build # the dist file will be created which is extension
