@@ -22,7 +22,7 @@ Play/pause, seek, speed — near-perfect sync with absolute state enforcement an
 - **Automatic Reconnection** — Reliable recovery from network interruptions
 - **Clean, Minimal Interface**
 
-**Intentional Scope Exclusions**
+## Intentional Scope Exclusions
 - **No volume synchronization** – Preserves users’ individual audio preferences and device-specific settings.
 - **No built-in chat** – Designed as a lightweight complement to existing messaging platforms, maximizing privacy and avoiding vendor lock-in.
 - **No standalone connection forwarding** – Prioritizes maximum privacy and the smallest possible attack surface.
