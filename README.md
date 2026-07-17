@@ -7,17 +7,27 @@ Works on YouTube, Netflix, Disney+, Prime Video, local files, Vimeo, arbitrary s
 Play/pause, seek, speed — near-perfect sync with absolute state enforcement and minimal drift.
 
 ## Key Features
+**Key Features**
+- **Dual Synchronization Modes**  
+  - Video Sync for anime, movies, series, and videos  
+  - Scroll Sync for manga, comics, and webtoons
+- **Intelligent Tab Management**  
+  - Automatically disables sync on inactive tabs  
+  - Seamless desynchronization when tabs are closed
+- **Universal Video Detection** — Reliably identifies the correct video player even with multiple ads playing, nested iframes, dynamic DOM, and shadow roots
+- **Absolute State Synchronization** — Precise playback and scroll position with zero drift
+- **Secure Cloudflare Integration** — Leverages free Cloudflare link sharing for E2EE, outbound-only connections, no public IP exposure, and built-in DDoS/WAF protection
+- **High-Performance Custom Binary WebSocket** — Delivers ~5 ms localhost and ~250 ms global latency with maximum uptime, overcoming typical Cloudflare limitations
+- **Noise-Free Event Handling** — Captures only genuine user interactions, filtering out HTML5 noise
+- **Automatic Reconnection** — Reliable recovery from network interruptions
+- **Clean, Minimal Interface**
 
-- Universal, resilient video detection (MutationObserver + dynamic DOM, SPA navigation, shadow roots, nested iframes, player reloads)
-- Absolute state synchronization (full playback state sent on user action — no delta drift)
-- Noise-free events (filters buffering, ads, auto-play; only genuine user-initiated changes)
-- End-to-end encryption (AES-GCM, client-side keys; server sees no plaintext)
-- Low-latency networking (~5 ms localhost, ~250 ms avg. cross-continent via WebSocket + Cloudflare Tunnel)
-- Robust connectivity (auto-reconnect, heartbeats, handles tab sleep / network drops)
-- Privacy-focused backend (outbound-only Cloudflare Tunnel Zero Trust, no public IP, built-in DDoS/WAF)
-- Minimal UI (clean popup: room status, participants, sync state)
+**Intentional Scope Exclusions**
+- **No volume synchronization** – Preserves users’ individual audio preferences and device-specific settings.
+- **No built-in chat** – Designed as a lightweight complement to existing messaging platforms, maximizing privacy and avoiding vendor lock-in.
+- **No standalone connection forwarding** – Prioritizes maximum privacy and the smallest possible attack surface.
 
-## Demo
+## Demo (The Ui has changed)
 https://github.com/user-attachments/assets/b2370619-cced-4740-ab26-df9cf7c17990
 
 
@@ -56,12 +66,8 @@ cloudflared tunnel --url http://localhost:8001
 → Both users open the extension popup, paste the URL, and activate
 
 ## Current Limitations
-
-- No volume sync (intentional — keeps personal audio preferences)
-- No built-in chat (intentional — use your preferred messaging or video call app)
-- No standalone connection forwarding (intentional — for maximum privacy)
-- No automatic buffering protection (planned for the future)
-- Occasional Zig Zag (planned for the future)
+- No automatic buffering protection – Users should coordinate pauses manually with their counterpart when buffering occurs.
+- Occasional synchronization conflicts (“zigzag” effect) – May occur when both parties interact simultaneously. Workaround: Temporarily disable and re-enable sync to restore alignment.
 
 ## ⚠️ Important – No License Yet
 
