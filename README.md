@@ -58,9 +58,10 @@ cloudflared tunnel --url http://localhost:8001
 ## Current Limitations
 
 - No volume sync (intentional — keeps personal audio preferences)
-- No automatic buffering protection (planned for future)
-- No built-in chat (intentional — use your preferred messaging/video call app)
-- No standalone connection forwarding
+- No built-in chat (intentional — use your preferred messaging or video call app)
+- No standalone connection forwarding (intentional — for maximum privacy)
+- No automatic buffering protection (planned for the future)
+- Occasional Zig Zag (planned for the future)
 
 ## ⚠️ Important – No License Yet
 
