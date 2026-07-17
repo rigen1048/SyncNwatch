@@ -9,6 +9,7 @@ import {
 export function useActivation() {
   const [isActive, setIsActive] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
+  const [activeMode, setActiveMode] = useState<"video" | "scroll" | null>(null);
   const [connectionStatus, setConnectionStatus] =
     useState<ConnectionStatus>("searching");
   const [ping, setPing] = useState<number>(0);
@@ -113,12 +114,15 @@ export function useActivation() {
         if (response?.isCurrentTabActive) {
           setIsActive(true);
           setIsLocked(false);
+          setActiveMode(response.storedMode || "video");
         } else if (response?.storedTabId !== null) {
           setIsActive(false);
           setIsLocked(true);
+          setActiveMode(response.storedMode || "video");
         } else {
           setIsActive(false);
           setIsLocked(false);
+          setActiveMode(null);
         }
 
         // Sync local connection status after restore
@@ -137,7 +141,7 @@ export function useActivation() {
   }, []);
 
   // Toggle activation
-  const handleToggle = async () => {
+  const handleToggle = async (mode: "video" | "scroll" = "video") => {
     const tabId = await getCurrentTabId();
     if (!tabId) {
       console.warn("[useActivation] No active tab");
@@ -155,14 +159,15 @@ export function useActivation() {
 
       setIsActive(false);
       setIsLocked(false);
+      setActiveMode(null);
 
       // Force re-check connection after deactivation (content script may still send status)
       await refreshVideoConnection();
     } else {
       // === ACTIVATE ===
-      if (connectionStatus !== "connected") {
+      if (mode === "video" && connectionStatus !== "connected") {
         console.log(
-          "[useActivation] Cannot activate: not connected",
+          "[useActivation] Cannot activate video sync: not connected",
           connectionStatus,
         );
         return;
@@ -177,10 +182,12 @@ export function useActivation() {
         await chrome.runtime.sendMessage({
           type: "startActivation",
           tabId,
+          mode,
         });
-        console.log(`[useActivation] Activated tab ${tabId}`);
+        console.log(`[useActivation] Activated tab ${tabId} in ${mode} mode`);
         setIsActive(true);
         setIsLocked(false);
+        setActiveMode(mode);
       } catch (err) {
         console.error("[useActivation] Failed to start activation:", err);
       }
@@ -188,35 +195,51 @@ export function useActivation() {
   };
 
   // UI derivations
-  const buttonText = isActive || isLocked ? "Deactivate" : "Activate";
-  const isButtonDisabled = connectionStatus !== "connected" && !isLocked;
+  const videoButtonText =
+    (isActive || isLocked) && activeMode === "video"
+      ? "Deactivate Video"
+      : "Activate Video";
+  const scrollButtonText =
+    (isActive || isLocked) && activeMode === "scroll"
+      ? "Deactivate Scroll"
+      : "Activate Scroll";
+
+  const isVideoButtonDisabled =
+    (isLocked && activeMode !== "video") ||
+    (connectionStatus !== "connected" && !isActive && !isLocked);
+  const isScrollButtonDisabled = isLocked && activeMode !== "scroll";
 
   const statusText = isActive
-    ? "Active (this tab)"
+    ? `Active (${activeMode} sync)`
     : isLocked
-      ? "Active in another tab"
+      ? `Active in another tab (${activeMode})`
       : connectionStatus === "connected"
-        ? "Connected"
+        ? "Video Connected"
         : connectionStatus === "searching"
           ? "Searching for video..."
-          : "No video detected"; // covers "none"
+          : "No video detected";
 
   const circleColor =
-    isActive || isLocked || connectionStatus === "connected"
-      ? "#10b981" // green
-      : connectionStatus === "searching"
-        ? "#fbbf24" // yellow
-        : "#ef4444"; // red
+    isActive || isLocked
+      ? "#10b981" // green when active
+      : connectionStatus === "connected"
+        ? "#10b981" // green when video found
+        : connectionStatus === "searching"
+          ? "#fbbf24" // yellow when searching
+          : "#ef4444"; // red when no video
 
   return {
     isActive,
     isLocked,
+    activeMode,
     ping,
-    buttonText,
+    videoButtonText,
+    scrollButtonText,
     statusText,
     circleColor,
     isConnected: connectionStatus === "connected",
-    isButtonDisabled,
+    isVideoButtonDisabled,
+    isScrollButtonDisabled,
     handleToggle,
   };
 }

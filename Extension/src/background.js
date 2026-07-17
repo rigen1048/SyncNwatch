@@ -2,15 +2,25 @@ import { open, close, setWebSocketUrl, getWebSocketUrl } from "./components/webs
 import { start, stop } from "./Data/observationFilter";
 import { enable, disable } from "./Data/listen";
 import { startPing, stopPing, getPing } from "./Data/ping";
+import { sendPacket } from "./Data/translator";
 
 let checkInterval = null;
-
+let currentMode = null; // 'video' or 'scroll'
 
 //Starts all synchronization services.
-function yes() {
+function yes(mode = 'video') {
+  currentMode = mode;
   open();
-  start();
-  enable();
+  if (mode === 'video') {
+    start();
+    enable();
+  } else if (mode === 'scroll') {
+    // Scroll sync logic is handled via messages to/from content scripts
+    // but we need to enable the listener in the background to relay if needed
+    // Actually, the existing 'enable()' in listen.ts handles incoming packets.
+    // We should make sure listen.ts can handle scroll packets.
+    enable(); 
+  }
   startPing();
 }
 
@@ -21,6 +31,7 @@ function no() {
   disable();
   stop();
   close();
+  currentMode = null;
 }
 
 /**
@@ -96,10 +107,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           active: true,
           currentWindow: true,
         });
-
+        
         const currentTabId = currentTab?.id ?? null;
-        const result = await chrome.storage.session.get("1");
-        const storedTabId = result["1"] ?? null;
+        const sessionData = await chrome.storage.session.get(["1", "mode"]);
+        const storedTabId = sessionData["1"] ?? null;
+        const storedMode = sessionData["mode"] ?? null;
 
         // If a tab is stored but doesn't exist anymore, clear it immediately
         if (storedTabId !== null) {
@@ -119,6 +131,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         sendResponse({
           storedTabId,
+          storedMode,
           isCurrentTabActive: currentTabId !== null && storedTabId === currentTabId,
         });
       } catch (err) {
@@ -136,10 +149,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "startActivation" && message.tabId != null) {
     (async () => {
       try {
-        await chrome.storage.session.set({ 1: message.tabId });
-        yes();
+        const mode = message.mode || 'video';
+        await chrome.storage.session.set({ 1: message.tabId, "mode": mode });
+        yes(mode);
+        
+        // Notify the tab to start its specific sync
+        if (mode === 'scroll') {
+          chrome.tabs.sendMessage(message.tabId, { type: "enableScrollSync" });
+        }
+
         startPeriodicCheck(); // Start checking now that we have an active tab
-        console.log("[background] Activation started for tab:", message.tabId);
+        console.log(`[background] Activation started for tab: ${message.tabId} mode: ${mode}`);
       } catch (err) {
         console.error("[background] Failed to start activation:", err);
       }
@@ -196,6 +216,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "getPing") {
     sendResponse({ ping: getPing() });
+    return false;
+  }
+
+  if (message.type === "scrollUpdate") {
+    sendPacket("s", message.value);
     return false;
   }
 

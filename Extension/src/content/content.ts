@@ -1,4 +1,5 @@
 import { observeVideo } from "../../utility/video";
+import { enableScrollSync, disableScrollSync, applyScroll } from "../scrollSync";
 
 let videoElement: HTMLVideoElement | null = null;
 let metadataLoaded = false;
@@ -59,7 +60,7 @@ function onSeeked() {
 }
 
 function pushStatus() {
-  if (!videoElement || !metadataLoaded) return;
+  if (!videoElement || !metadataLoaded || document.hidden) return;
 
   chrome.runtime.sendMessage({
     type: "statusUpdate",
@@ -75,6 +76,21 @@ function pushStatus() {
 observeVideo(handleVideo);
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message.type === "enableScrollSync") {
+    enableScrollSync();
+    return;
+  }
+
+  if (message.type === "disableScrollSync") {
+    disableScrollSync();
+    return;
+  }
+
+  if (message.type === "applyScroll") {
+    applyScroll(message.value);
+    return;
+  }
+
   if (!videoElement) {
     if (message.type === "getStatus") {
       sendResponse({ noVideo: true });

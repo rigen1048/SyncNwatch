@@ -37,6 +37,10 @@ export default function RoomLink() {
         display: "flex",
         flexDirection: "column",
         gap: "8px",
+        background: "rgba(30, 41, 59, 0.4)",
+        border: "1px solid #334155",
+        borderRadius: "10px",
+        padding: "14px",
       }}
     >
       <div
@@ -46,7 +50,7 @@ export default function RoomLink() {
           alignItems: "center",
         }}
       >
-        <span style={{ letterSpacing: "0.8px" }}>SYNC LINK</span>
+        <span style={{ letterSpacing: "1px", fontSize: "11px", fontWeight: "600", color: "#94a3b8", textTransform: "uppercase" }}>Sync Link</span>
         <div
           style={{
             display: "flex",
@@ -58,12 +62,14 @@ export default function RoomLink() {
             <>
               <span
                 style={{
-                  fontSize: "11px",
-                  color: "#e2e8f0",
-                  maxWidth: "120px",
+                  fontSize: "12px",
+                  color: "#22d3ee",
+                  maxWidth: "140px",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
+                  fontFamily: "monospace",
+                  fontWeight: "500",
                 }}
               >
                 {currentUrl || "ws://..."}
@@ -71,25 +77,26 @@ export default function RoomLink() {
               <button
                 onClick={() => setIsEditing(true)}
                 style={{
-                  padding: "4px 8px",
-                  background: "transparent",
+                  padding: "6px 12px",
+                  background: "#334155",
                   border: "1px solid #475569",
-                  borderRadius: "5px",
-                  color: "#64748b",
-                  fontSize: "10px",
+                  borderRadius: "6px",
+                  color: "#94a3b8",
+                  fontSize: "11px",
+                  fontWeight: "600",
                   cursor: "pointer",
                   transition: "all 0.2s",
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.background = "#334155";
-                  e.currentTarget.style.color = "#e2e8f0";
+                  e.currentTarget.style.background = "#475569";
+                  e.currentTarget.style.color = "#22d3ee";
                 }}
                 onMouseOut={(e) => {
-                  e.currentTarget.style.background = "transparent";
-                  e.currentTarget.style.color = "#64748b";
+                  e.currentTarget.style.background = "#334155";
+                  e.currentTarget.style.color = "#94a3b8";
                 }}
               >
-                Edit
+                ✎ Edit
               </button>
             </>
           ) : (

@@ -169,6 +169,11 @@ function handleBinaryPacket(data: Uint8Array | ArrayBuffer) {
       // handleReconnectUserId(rawValue);
       break;
 
+    case "s": // scroll position
+      console.log(`[listen] Apply scroll percentage: ${rawValue / 10000}`);
+      sendControlMessage({ type: "applyScroll", value: rawValue / 10000 });
+      break;
+
     default:
       console.warn(
         "[listen] Unhandled numeric packet type:",

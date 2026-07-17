@@ -89,6 +89,13 @@ async def websocket_endpoint(websocket: WebSocket):
 
             opcode = data[0]
 
+            # Scroll sync (0x0A)
+            if opcode == 0x0A and len(data) >= 3:
+                scroll_val = (data[1] << 8) | data[2]
+                logger.info(f"SCROLL SYNC ← {client_info} | val={scroll_val}")
+                await broadcast(data, exclude = websocket)
+                continue
+
             # Server commands (0x05)
             if opcode == 0x05 and len(data) >= 2:
                 cmd = data[1]

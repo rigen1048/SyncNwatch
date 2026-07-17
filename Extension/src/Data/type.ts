@@ -9,6 +9,7 @@ export enum PacketType {
   l = 0x07, //latency ping (Numeric Proccess)
   d = 0x08, //drift checker (Numeric Proccess)
   i = 0x09, // User's unique id (reconnect even if room is lock)
+  s = 0x0a, // Scroll position (Numeric Process)
 }
 
 // SubTypes Defined
@@ -65,6 +66,11 @@ export const VideoEnum = {
   p: Pcmd,
   r: PacketType.r,
   t: PacketType.t,
+} as const;
+
+export const ScrollEnum = {
+  // Needs to apply in Scroll
+  s: PacketType.s,
 } as const;
 
 export const PopupEnum = {
