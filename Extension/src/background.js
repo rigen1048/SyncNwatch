@@ -25,12 +25,26 @@ function yes(mode = 'video') {
 }
 
 // Stops all synchronization services and clears the periodic check.
-function no() {
+async function no() {
   stopPeriodicCheck();
   stopPing();
   disable();
   stop();
   close();
+
+  // Explicitly disable scroll sync in the active tab if it was the mode
+  if (currentMode === 'scroll') {
+    try {
+      const result = await chrome.storage.session.get("1");
+      const storedTabId = result["1"];
+      if (storedTabId) {
+        chrome.tabs.sendMessage(storedTabId, { type: "disableScrollSync" });
+      }
+    } catch (err) {
+      console.error("[background] Failed to send disableScrollSync:", err);
+    }
+  }
+
   currentMode = null;
 }
 
@@ -89,6 +103,24 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
     }
   } catch (err) {
     console.error("[background] Error in onRemoved listener:", err);
+  }
+});
+
+// Listener for tab updates to handle page navigation
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete') {
+    try {
+      const sessionData = await chrome.storage.session.get(["1", "mode"]);
+      const storedTabId = sessionData["1"];
+      const storedMode = sessionData["mode"];
+
+      if (storedTabId === tabId && storedMode === 'scroll') {
+        console.log(`[background] Tab ${tabId} navigated. Re-enabling scroll sync.`);
+        chrome.tabs.sendMessage(tabId, { type: "enableScrollSync" });
+      }
+    } catch (err) {
+      console.error("[background] Error in onUpdated listener:", err);
+    }
   }
 });
 

@@ -45,18 +45,22 @@ function App() {
           to { opacity: 1; transform: translateY(0); }
         }
 
-        html, body {
+        html {
+          width: 360px;
+          height: auto;
+          overflow-x: hidden;
+        }
+
+        body {
           margin: 0;
           padding: 0;
           width: 360px;
           height: auto;
           background: transparent;
-          overflow: hidden;
+          overflow-x: hidden;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-
-        body {
-          width: 360px;
+          /* Force constant size regardless of browser zoom */
+          zoom: 1 !important;
         }
       `}</style>
 

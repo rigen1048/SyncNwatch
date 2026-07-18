@@ -2,7 +2,7 @@
 
 class WebSocketManager {
   private socket: WebSocket | null = null;
-  private reconnectTimeout: number | null = null;
+  private reconnectTimeout: any = null;
   private isActive: boolean = false;
   private messageCallback: ((data: Uint8Array) => void) | null = null;
   private wsUrl: string = "ws://localhost:8001/"; // Default URL : ws://localhost:8000/ws"
@@ -20,8 +20,8 @@ class WebSocketManager {
     this.socket.onmessage = (event: MessageEvent) => {
       if (event.data instanceof ArrayBuffer) {
         const uint8 = new Uint8Array(event.data);
-        // Only forward packets smaller than 6 bytes
-        if (uint8.length < 6 && this.messageCallback) {
+        // Only forward packets smaller than 10 bytes (allowing for 32-bit numeric values)
+        if (uint8.length < 10 && this.messageCallback) {
           this.messageCallback(uint8);
         }
       }
@@ -66,9 +66,9 @@ class WebSocketManager {
   }
 
   public sendBinary(data: Uint8Array) {
-    // Only allow sending packets smaller than 4 bytes (as per your rule)
-    if (data.length >= 4) {
-      console.warn("[WS] Blocked send: packet size >= 4 bytes");
+    // Only allow sending packets smaller than 10 bytes (allowing for 32-bit numeric values)
+    if (data.length >= 10) {
+      console.warn("[WS] Blocked send: packet size >= 10 bytes");
       return;
     }
 

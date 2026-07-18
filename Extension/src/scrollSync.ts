@@ -19,15 +19,9 @@ export function disableScrollSync() {
 function getScrollState() {
   const root = document.documentElement;
   const body = document.body;
-  const top = window.scrollY ?? root.scrollTop ?? body.scrollTop ?? 0;
-  const scrollHeight = root.scrollHeight || body.scrollHeight || 0;
-  const clientHeight = root.clientHeight || window.innerHeight || 0;
+  const top = Math.round(window.scrollY ?? root.scrollTop ?? body.scrollTop ?? 0);
 
-  return {
-    top,
-    percentage:
-      scrollHeight > clientHeight ? top / (scrollHeight - clientHeight) : 0,
-  };
+  return { top };
 }
 
 let lastSentTs = 0;
@@ -41,9 +35,9 @@ function handleScroll() {
   // Throttle to ~30ms
   if (now - lastSentTs < 30) return;
 
-  // Scale percentage to 0-10000 for numeric packet (4 decimal places)
-  const scrollValue = Math.round(state.percentage * 10000);
+  const scrollValue = state.top;
 
+  // Use absolute pixel difference for threshold (e.g., 5 pixels)
   if (Math.abs(scrollValue - lastSentScroll) > 5) {
     lastSentScroll = scrollValue;
     lastSentTs = now;
@@ -51,22 +45,15 @@ function handleScroll() {
   }
 }
 
-export function applyScroll(percentage: number) {
-  const root = document.documentElement;
-  const body = document.body;
-  const scrollHeight = root.scrollHeight || body.scrollHeight || 0;
-  const clientHeight = root.clientHeight || window.innerHeight || 0;
-
-  const targetTop = percentage * (scrollHeight - clientHeight);
-
+export function applyScroll(absoluteTop: number) {
   isApplyingScroll = true;
   window.scrollTo({
-    top: targetTop,
+    top: absoluteTop,
     left: 0,
     behavior: "instant",
   });
 
-  lastSentScroll = Math.round(percentage * 10000);
+  lastSentScroll = absoluteTop;
 
   // Reset after a short delay to allow the scroll event to fire and be ignored
   setTimeout(() => {

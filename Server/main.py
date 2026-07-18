@@ -91,8 +91,13 @@ async def websocket_endpoint(websocket: WebSocket):
 
             # Scroll sync (0x0A)
             if opcode == 0x0A and len(data) >= 3:
-                scroll_val = (data[1] << 8) | data[2]
-                logger.info(f"SCROLL SYNC ← {client_info} | val={scroll_val}")
+                if len(data) == 3:
+                    scroll_val = (data[1] << 8) | data[2]
+                elif len(data) == 5:
+                    scroll_val = (data[1] << 24) | (data[2] << 16) | (data[3] << 8) | data[4]
+                else:
+                    scroll_val = "unknown_len"
+                logger.info(f"SCROLL SYNC ← {client_info} | val={scroll_val} | len={len(data)}")
                 await broadcast(data, exclude = websocket)
                 continue
 

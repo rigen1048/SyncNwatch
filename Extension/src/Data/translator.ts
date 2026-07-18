@@ -49,20 +49,29 @@ function translatorInternal(
     const subByte = enumValue as unknown as number;
     return new Uint8Array([typeByte, subByte]);
   }
-  // ───── Numeric packet: 3 bytes ─────
-  if (
-    typeof value !== "number" ||
-    !Number.isInteger(value) ||
-    value < 0 ||
-    value > 0xffff
-  ) {
+  // ───── Numeric packet: Variable length based on value ─────
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
     throw new Error(
-      `Numeric value for "${type}" must be integer 0–65535, got ${value}`,
+      `Numeric value for "${type}" must be a non-negative integer, got ${value}`,
     );
   }
-  const high = (value >> 8) & 0xff;
-  const low = value & 0xff;
-  return new Uint8Array([typeByte, high, low]);
+
+  // Use 3 bytes for values <= 0xFFFF (legacy compatibility)
+  // Use 5 bytes for larger values (up to 32-bit)
+  if (value <= 0xffff) {
+    const high = (value >> 8) & 0xff;
+    const low = value & 0xff;
+    return new Uint8Array([typeByte, high, low]);
+  } else {
+    // 32-bit big-endian: type + 4 bytes
+    return new Uint8Array([
+      typeByte,
+      (value >>> 24) & 0xff,
+      (value >>> 16) & 0xff,
+      (value >>> 8) & 0xff,
+      value & 0xff,
+    ]);
+  }
 }
 // ─────────────────────────────────────────────────────────────────────────────
 // sendPacket – fully type-safe public API

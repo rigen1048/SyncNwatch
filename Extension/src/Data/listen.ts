@@ -128,13 +128,25 @@ function handleBinaryPacket(data: Uint8Array | ArrayBuffer) {
     return;
   }
 
-  // Handle 3-byte numeric packets
+  // Handle numeric packets (3 bytes for uint16, 5 bytes for uint32)
   if (packet.byteLength < 3) {
     console.warn("[listen] Numeric packet too short for type:", typeKey);
     return;
   }
 
-  const rawValue = (packet[1] << 8) | packet[2]; // big-endian uint16
+  let rawValue: number;
+  if (packet.byteLength === 3) {
+    rawValue = (packet[1] << 8) | packet[2]; // big-endian uint16
+  } else if (packet.byteLength === 5) {
+    rawValue =
+      ((packet[1] << 24) >>> 0) |
+      (packet[2] << 16) |
+      (packet[3] << 8) |
+      packet[4]; // big-endian uint32
+  } else {
+    console.warn("[listen] Unexpected numeric packet length:", packet.byteLength);
+    return;
+  }
 
   switch (typeKey) {
     case "t": // seek timestamp in milliseconds
@@ -170,8 +182,8 @@ function handleBinaryPacket(data: Uint8Array | ArrayBuffer) {
       break;
 
     case "s": // scroll position
-      console.log(`[listen] Apply scroll percentage: ${rawValue / 10000}`);
-      sendControlMessage({ type: "applyScroll", value: rawValue / 10000 });
+      console.log(`[listen] Apply scroll offset: ${rawValue}`);
+      sendControlMessage({ type: "applyScroll", value: rawValue });
       break;
 
     default:

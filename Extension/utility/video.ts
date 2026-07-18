@@ -1,6 +1,6 @@
 // utility/video.ts
 function generateSelector(video: HTMLVideoElement): string {
-  if (video.id) return `#${video.id}`;
+  if (video.id) return `#${CSS.escape(video.id)}`;
   if (video.classList.length > 0) {
     const classes = Array.from(video.classList).join(".");
     return `video.${classes}`;
@@ -11,7 +11,7 @@ function generateSelector(video: HTMLVideoElement): string {
   while (el && el !== document.body) {
     let selector = el.tagName.toLowerCase();
     if (el.id) {
-      selector += `#${el.id}`;
+      selector += `#${CSS.escape(el.id)}`;
       path.unshift(selector);
       break;
     }
